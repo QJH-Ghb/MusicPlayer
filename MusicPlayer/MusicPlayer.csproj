@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="wwwroot\one-music-gh-pages\**" />
+    <Content Remove="wwwroot\one-music-gh-pages\**" />
+    <EmbeddedResource Remove="wwwroot\one-music-gh-pages\**" />
+    <None Remove="wwwroot\one-music-gh-pages\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
   </ItemGroup>
