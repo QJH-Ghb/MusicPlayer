@@ -20,8 +20,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400">        <!-- Google web font "Open Sans" -->
     <link rel="stylesheet" href="~/css/bootstrap.min.css">                                            <!-- https://getbootstrap.com/ -->
     <link rel="stylesheet" href="~/css/fontawesome-all.min.css">                                      <!-- Font awesome -->
-    <link rel="stylesheet" href="~/css/tooplate-style.css">                                           <!-- Templatemo style -->
-
+    <link rel="stylesheet" href="~/css/tooplate-style.css">                                         <!-- Templatemo style -->
+   
     <script>
         var renderPage = true;
 
@@ -32,7 +32,6 @@
           renderPage = false;
         }
     </script>
-
 </head>
 
 <body>
@@ -45,22 +44,24 @@
     </div>
 
     <div class="tm-main">
-        background: red !important;
 
         <div class="tm-welcome-section">
             <div class="container tm-navbar-container">
                 <div class="row">
                     <div class="col-xl-12">
                         <nav class="navbar navbar-expand-sm">
-                            <ul class="navbar-nav ml-auto">
-                                <li class="nav-item active">
-                                    <a href="Home.html" class="nav-link tm-nav-link tm-text-white active">Home</a>
+                            <ul class="navbar-nav ml-auto">    
+                                <li class="nav-item">
+                                    <a class="nav-link tm-text-white" asp-area="" asp-controller="Home" asp-action="Index" style="font-weight: bold;">Home</a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="MusicList.html" class="nav-link tm-nav-link tm-text-white">Your Library</a>
+                                    <a class="nav-link tm-text-white" asp-area="" asp-controller="Home" asp-action="Search" style="font-weight: bold;">Search</a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="Profile.html" class="nav-link tm-nav-link tm-text-white">Profile</a>
+                                    <a class="nav-link tm-text-white" asp-area="" asp-controller="Home" asp-action="YourLibrary" style="font-weight: bold;">YourLibrary</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link tm-text-white" asp-area="" asp-controller="Home" asp-action="Profile" style="font-weight: bold;">Profile</a>
                                 </li>
                             </ul>
                         </nav>
@@ -178,7 +179,7 @@
             </div>
             <footer class="row">
                 <div class="col-xl-12">
-                    <p class="text-center p-4">Copyright &copy; <span class="tm-current-year">2018</span> Your Company Name - Web Design:  <a href="http://tooplate.com" class="tm-text-gray">Tooplate</a></p>
+                    <p class="text-center p-4" style="font-weight: bold;">Enjoy Your Music</p>
                 </div>
             </footer>
         </div> <!-- .container -->

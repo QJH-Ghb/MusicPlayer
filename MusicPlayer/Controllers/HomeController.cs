@@ -69,6 +69,14 @@ namespace MusicPlayer.Controllers
             }
             return View("~/Views/Home/Index.cshtml");
         }
+        public IActionResult Search()
+        {
+            return View();
+        }
+        public IActionResult Profile()
+        {
+            return View();
+        }
         public IActionResult Privacy()
         {
             return View();
