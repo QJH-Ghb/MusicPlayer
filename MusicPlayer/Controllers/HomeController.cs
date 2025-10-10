@@ -73,6 +73,10 @@ namespace MusicPlayer.Controllers
         {
             return View();
         }
+        public IActionResult YourLibrary()
+        {
+            return View() ;
+        }
         public IActionResult Profile()
         {
             return View();

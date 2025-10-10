@@ -244,12 +244,21 @@ figure.effect-sadie p {
     -webkit-transform: translate3d(0,10px,0);
     transform: translate3d(0,10px,0);
 }
-
-figure.effect-sadie:hover h2 {
-    opacity: 1;
-    -webkit-transform: translate3d(0,-50%,0) translate3d(0,-10px,0);
-    transform: translate3d(0,-50%,0) translate3d(0,-10px,0);
+/*.nav-link.tm-text-white {
+    color: #eee;
+    transition: all 0.3s ease;
+}*/
+.nav-link.tm-text-white {
+    color: #eee;
+    transition: all 0.3s ease;
 }
+
+    .nav-link.tm-text-white:hover {
+        color: #fff;
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.8); /* µo¥ú·P */
+    }
+
+
 
 figure.effect-sadie:hover figcaption::before ,
 figure.effect-sadie:hover p {
