@@ -268,35 +268,47 @@
 <body>
 	<h2>MusicPlayer from Team1</h2>
 	<div class="container" id="container">
+		<!-- 註冊 -->
 		<div class="form-container sign-up-container">
-			<form action="~/Home/Register" method="post" enctype="multipart/form-data">
+			<form id="registerForm" action="~/Home/Register" method="post" enctype="multipart/form-data">
+				@Html.AntiForgeryToken()
+
 				<h1>Create Account</h1>
 				<div class="social-container">
-					<a href="#" class="social"><i class="fab fa-facebook-f"></i></a>
-					<a href="#" class="social"><i class="fab fa-google-plus-g"></i></a>
-					<a href="#" class="social"><i class="fab fa-linkedin-in"></i></a>
+					<a href="/Home/ExternalLogin?provider=Google&returnUrl=/Home/Index" class="social" title="Sign in with Google">
+						<img src="~/image/google.png" alt="Alternate Text" /><i class="fab fa-google"></i>
+					</a>
 				</div>
 				<span>or use your email for registration</span>
+
 				<input type="text" name="username" placeholder="Name" />
 				<input type="email" name="email" placeholder="Email" />
 				<input type="password" name="password" placeholder="Password" />
-				<button type="submit">Sign Up</button>
+
+				<div id="regMessage"></div>
+
+				<button type="button" id="btnSignUp">Sign Up</button>
 			</form>
 		</div>
+		<!-- 登入 -->
 		<div class="form-container sign-in-container">
-			<form action="~/Home/Login" method="post" enctype="multipart/form-data">
+			<form id="loginForm" action="~/Home/Login" method="post">
+				@Html.AntiForgeryToken()
 				<h1>Sign in</h1>
 				<div class="social-container">
-					<a href="#" class="social"><i class="fab fa-facebook-f"></i></a>
-					<a href="#" class="social"><i class="fab fa-google-plus-g"></i></a>
-					<a href="#" class="social"><i class="fab fa-linkedin-in"></i></a>
+					<a href="/Home/ExternalLogin?provider=Google&returnUrl=/Home/Index" class="social" title="Sign in with Google">
+						<img src="~/image/google.png" alt="Alternate Text" /><i class="fab fa-google"></i>
+					</a>
 				</div>
 				<span>or use your account</span>
+
 				<input type="text" name="username" placeholder="Username" />
 				<input type="password" name="password" placeholder="Password" />
-                @ViewBag.Message
+
+				<div id="message">@ViewBag.Message</div>
+
 				<a href="#">Forgot your password?</a>
-				<button type="submit">Sign In</button>
+				<button type="button" id="btnSignIn">Sign In</button>
 			</form>
 		</div>
 		<div class="overlay-container">
@@ -326,17 +338,129 @@
 	</footer>
 
 	<script>
-		const signUpButton = document.getElementById('signUp');
-		const signInButton = document.getElementById('signIn');
-		const container = document.getElementById('container');
+		(function () {
+			// ===== 面板切換 =====
+			const container = document.getElementById('container');
+			const overlaySignUpBtn = document.getElementById('signUp'); // 右側透明按鈕
+			const overlaySignInBtn = document.getElementById('signIn'); // 左側透明按鈕
 
-		signUpButton.addEventListener('click', () => {
-			container.classList.add("right-panel-active");
-		});
+			if (overlaySignUpBtn) {
+				overlaySignUpBtn.addEventListener('click', () => container.classList.add('right-panel-active'));
+			}
+			if (overlaySignInBtn) {
+				overlaySignInBtn.addEventListener('click', () => container.classList.remove('right-panel-active'));
+			}
 
-		signInButton.addEventListener('click', () => {
-			container.classList.remove("right-panel-active");
-		});
+			// ===== 登入 AJAX =====
+			const loginForm = document.getElementById('loginForm');
+			const btnSignIn = document.getElementById('btnSignIn');
+			const msgLogin = document.getElementById('message');
+
+			if (btnSignIn) {
+				btnSignIn.addEventListener('click', async function () {
+					const fd = new FormData(loginForm);
+					const token = loginForm.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+					const body = new URLSearchParams(fd);
+
+					btnSignIn.disabled = true;
+					msgLogin.textContent = 'Signing in...';
+
+					try {
+						const url = loginForm.getAttribute('action').replace('~', '');
+						const res = await fetch(url, {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+								'Accept': 'application/json',
+								'X-Requested-With': 'XMLHttpRequest',
+								'RequestVerificationToken': token
+							},
+							body: body.toString(),
+							redirect: 'manual'
+						});
+
+						if (!res.ok) {
+							const html = await res.text();
+							throw new Error(`HTTP ${res.status}: ` + html.slice(0, 160));
+						}
+
+						const ct = res.headers.get('content-type') || '';
+						if (!ct.includes('application/json')) {
+							const txt = await res.text();
+							throw new Error('伺服器回傳的不是 JSON：' + txt.slice(0, 160));
+						}
+
+						const result = await res.json();
+						if (result.success) {
+							msgLogin.textContent = '登入成功，正在導向...';
+							if (result.redirectUrl) location.href = result.redirectUrl;
+						} else {
+							msgLogin.textContent = result.message || '帳號或密碼錯誤';
+						}
+					} catch (err) {
+						msgLogin.textContent = '系統錯誤：' + err.message;
+					} finally {
+						btnSignIn.disabled = false;
+					}
+				});
+			}
+
+			// ===== 註冊 AJAX =====
+			const regForm = document.getElementById('registerForm');
+			const btnSignUp = document.getElementById('btnSignUp');
+			const msgReg = document.getElementById('regMessage');
+
+			if (btnSignUp) {
+				btnSignUp.addEventListener('click', async function () {
+					const fd = new FormData(regForm);
+					const token = regForm.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+					btnSignUp.disabled = true;
+					msgReg.textContent = 'Submitting...';
+
+					try {
+						const url = regForm.getAttribute('action').replace('~', '');
+						const res = await fetch(url, {
+							method: 'POST',
+							headers: {
+								'Accept': 'application/json',
+								'X-Requested-With': 'XMLHttpRequest',
+								'RequestVerificationToken': token
+							},
+							body: fd,
+							redirect: 'manual'
+						});
+
+						if (!res.ok) {
+							const html = await res.text();
+							throw new Error(`HTTP ${res.status}: ` + html.slice(0, 160));
+						}
+
+						const ct = res.headers.get('content-type') || '';
+						if (!ct.includes('application/json')) {
+							const txt = await res.text();
+							throw new Error('伺服器未回 JSON：' + txt.slice(0, 160));
+						}
+
+						const result = await res.json();
+						if (result.success) {
+							msgReg.textContent = result.message || '註冊成功！';
+
+							// 註冊成功 → 自動切回登入面板
+							if (container) container.classList.remove('right-panel-active');
+
+							if (result.redirectUrl) location.href = result.redirectUrl;
+						} else {
+							msgReg.textContent = result.message || '註冊失敗';
+						}
+					} catch (err) {
+						msgReg.textContent = '系統錯誤：' + err.message;
+					} finally {
+						btnSignUp.disabled = false;
+					}
+				});
+			}
+		})();
 	</script>
 	@if (TempData["AlertMessage"] != null)
 	{

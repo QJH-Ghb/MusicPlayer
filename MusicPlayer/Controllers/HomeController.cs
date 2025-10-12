@@ -1,9 +1,14 @@
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.DataAnnotations;
 using MusicPlayer.Models;
 using MVC_DB_.Models;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace MusicPlayer.Controllers
 {
@@ -27,47 +32,87 @@ namespace MusicPlayer.Controllers
             return View("~/Views/Login/Login.cshtml");
         }
         [HttpPost]
-        public IActionResult Login(string username,string password)
+        [ValidateAntiForgeryToken]
+        public IActionResult Login(string username, string password)
         {
-            Logincheck logincheck = new Logincheck();
-            bool result = logincheck.ValidateUser(username, password);
-            ViewBag.Message = "請輸入帳號或密碼";
-            if (result)
-            {
+            bool isAjax =
+                string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) ||
+                (Request.Headers["Accept"].ToString()?.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0;
 
-                // 登入成功
+            var svc = new Logincheck();
+            var result = svc.Login(username, password);
+
+            if (isAjax)
+            {
+                if (result.Success)
+                    return Json(new { success = true, redirectUrl = Url.Action("Index", "Home") });
+                return Json(new { success = false, message = result.Message });
+            }
+
+            if (result.Success)
                 return View("~/Views/Home/Index.cshtml");
-            }
-            else
-            {
-                // 登入失敗
-                ViewBag.Message = "帳號或密碼錯誤";
-                return View("~/Views/Login/Login.cshtml");
-            }
+
+            ViewBag.Message = result.Message;
+            return View("~/Views/Login/Login.cshtml");
         }
+
         [HttpPost]
-        public IActionResult Register(string username, string password,string email)
+        [ValidateAntiForgeryToken]
+        public IActionResult Register(string username, string password, string email)
         {
-            DBmanager db = new DBmanager();
-            if (db.CheckAccountExists(username))
+            bool isAjax =
+                string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) ||
+                (Request.Headers["Accept"].ToString()?.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0;
+
+            var svc = new Logincheck();
+            var result = svc.Register(username, password, email);
+
+            if (isAjax)
             {
-                TempData["AlertMessage"] = "此帳號已被註冊！";
-                return View("~/Views/Login/Login.cshtml");
+                if (result.Success)
+                    return Json(new { success = true, message = result.Message, redirectUrl = Url.Action("Login", "Home") });
+                return Json(new { success = false, message = result.Message });
             }
-            else
+
+            if (result.Success)
             {
-                if (string.IsNullOrWhiteSpace(username) ||
-                string.IsNullOrWhiteSpace(password) ||
-                string.IsNullOrWhiteSpace(email)
-                )
-                {
-                    ViewBag.Message = "所有欄位皆為必填";
-                    return View("~/Views/Login/Login.cshtml");
-                }
-                db.newAccount(new account { userName = username, passWord = password, email = email });
-                ViewBag.Message = "註冊成功！";
+                TempData["AlertMessage"] = result.Message ?? "註冊成功！請登入";
+                return RedirectToAction("Login", "Home");
             }
-            return View("~/Views/Home/Index.cshtml");
+
+            ViewBag.Message = result.Message;
+            return View("~/Views/Login/Login.cshtml");
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult ExternalLogin(string provider, string returnUrl = "/Home/Index")
+        {
+            // Google 完成後，會先回 /signin-google（由中介軟體處理）
+            // 處理完再把使用者 redirect 到這裡設定的 RedirectUri（即我們自己的 Callback）
+            var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Home", new { returnUrl });
+            var props = new AuthenticationProperties { RedirectUri = redirectUrl };
+            return Challenge(props, provider);
+        }
+
+        // 我們自己的 Callback（不是給 Google 的）
+        // Google 先回 /signin-google -> 中介軟體處理後再導到這裡
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("externallogin-callback")]
+        public async Task<IActionResult> ExternalLoginCallback(string returnUrl = "/Home/Index")
+        {
+            // 此時使用者已經由 Cookie Scheme 登入（Program.cs 設了 DefaultScheme = Cookies）
+            // 你可以從 HttpContext.User 取到 claims；此處示範最小檢查
+            if (!(User?.Identity?.IsAuthenticated ?? false))
+            {
+                TempData["AlertMessage"] = "外部登入失敗，請再試一次。";
+                return RedirectToAction("Login");
+            }
+
+            // 這裡你可進一步：建立/綁定本地帳號（DBmanager）→ 已在前面教學提供範例
+            // 先回去 returnUrl
+            return LocalRedirect(returnUrl);
         }
         public IActionResult Privacy()
         {
