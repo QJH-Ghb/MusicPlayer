@@ -1,7 +1,12 @@
+using MusicPlayer.Models;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddDbContext<MusicContext>(options =>   //AddDbContext：註冊資料庫服務，讓 Controller 可以用建構子注入（DI）
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));  //UseSqlServer()：指定使用 SQL Server（若是 MySQL、SQLite 就換成相應方法）
 
 var app = builder.Build();
 
@@ -22,6 +27,6 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Login}/{id?}");
+    pattern: "{controller=Home}/{action=PlayList}/{id?}");
 
 app.Run();

@@ -1,0 +1,161 @@
+﻿@model List<MusicPlayer.Models.SongList>
+@{
+    Layout = "";
+}
+
+<div class="playlist-container">
+    <h2>我的播放清單</h2>
+    <ul id="playlistList">
+        @foreach (var song in Model)
+        {
+            <li data-src="@song.file_path">
+                <span class="song-title">@song.title - @song.artist</span>
+                <div class="buttons">
+                    <button class="play-btn">▶</button>
+                    <button class="remove-btn">✖</button>
+                </div>
+            </li>
+        }
+    </ul>
+
+    <audio id="audioPlayer" controls></audio>
+</div>
+
+<style>
+    body {
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: #fff;
+        background: radial-gradient(circle at top, #0a0a2a 0%, #000010 100%);
+        overflow-x: hidden;
+    }
+    .playlist-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px 25px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+        color: #fff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+        .playlist-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #a8c0ff;
+            text-shadow: 0 0 10px rgba(168,192,255,0.6);
+        }
+
+    #playlistList {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+        #playlistList li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+            #playlistList li:hover {
+                transform: scale(1.02);
+                box-shadow: 0 0 15px rgba(168,192,255,0.4);
+            }
+
+            #playlistList li.playing {
+                background-color: rgba(120,180,255,0.3);
+                font-weight: bold;
+            }
+
+    .song-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #c0d4ff;
+        text-shadow: 0 0 5px rgba(168,192,255,0.4);
+    }
+
+    .buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+        .buttons button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #a8c0ff;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+
+            .buttons button:hover {
+                transform: scale(1.2);
+            }
+
+    #audioPlayer {
+        width: 100%;
+        margin-top: 15px;
+        height: 40px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.1);
+        outline: none;
+        backdrop-filter: blur(5px);
+    }
+</style>
+
+<script>
+        document.addEventListener("DOMContentLoaded", function () {
+        const audioPlayer = document.getElementById("audioPlayer");
+        const playlist = document.getElementById("playlistList");
+
+        // 事件委派
+        playlist.addEventListener("click", function (e) {
+            const btn = e.target.closest("button");
+            if (!btn) return;
+
+            const li = btn.closest("li");
+            if (!li) return;
+
+            if (btn.classList.contains("play-btn")) {
+                const src = li.dataset.src;
+                if (!src) return;
+                audioPlayer.src = src;
+                audioPlayer.play().then(() => {
+                    playlist.querySelectorAll("li").forEach(i => i.classList.remove("playing"));
+                    li.classList.add("playing");
+                }).catch(err => console.log("播放失敗:", err));
+            }
+
+            if (btn.classList.contains("remove-btn")) {
+                if (li.classList.contains("playing")) {
+                    audioPlayer.pause();
+                    audioPlayer.src = "";
+                }
+                li.remove();
+            }
+        });
+
+        // 自動播放下一首
+        audioPlayer.addEventListener("ended", function () {
+            const items = playlist.querySelectorAll("li");
+            const currentIndex = Array.from(items).findIndex(i => i.classList.contains("playing"));
+            const nextIndex = currentIndex + 1;
+            if (nextIndex < items.length) {
+                const nextLi = items[nextIndex];
+                audioPlayer.src = nextLi.dataset.src;
+                audioPlayer.play();
+                items.forEach(i => i.classList.remove("playing"));
+                nextLi.classList.add("playing");
+            }
+        });
+    });
+
+</script>

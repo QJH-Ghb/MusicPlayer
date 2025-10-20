@@ -1,20 +1,27 @@
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.DataAnnotations;
+using Microsoft.Data.SqlClient;
 using MusicPlayer.Models;
 using MVC_DB_.Models;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
+using System.Linq;
+
 
 namespace MusicPlayer.Controllers
 {
     public class HomeController : Controller
     {
+        private readonly string _connStr = @"Server=(localdb)\MSSQLLocalDB;Database=MusicLibrary;Trusted_Connection=True;";
+        private readonly MusicContext _context;
 
         private readonly ILogger<HomeController> _logger;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, MusicContext context)
         {
             _logger = logger;
+            _context = context;
+
         }
 
         public IActionResult Index()
@@ -69,13 +76,34 @@ namespace MusicPlayer.Controllers
             }
             return View("~/Views/Home/Index.cshtml");
         }
+      
         public IActionResult Search()
         {
+            var musicFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "music");
+
+            var files = Directory.Exists(musicFolder)
+                        ? Directory.GetFiles(musicFolder, "*.mp3")
+                        : new string[0];
+
+            var songs = new Dictionary<string, string>();
+
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileName(file);       // 檔名
+                var relativePath = "/music/" + fileName;     // 前端可用的相對路徑
+                songs[fileName] = relativePath;
+            }
+
+            Console.WriteLine("讀到的歌曲數量: " + songs.Count);
+
+            ViewData["Songs"] = songs;
             return View();
         }
-        public IActionResult YourLibrary()
+        public IActionResult PlayList()
         {
-            return View() ;
+            var songs = _context.SongList.ToList();
+
+            return View(songs);
         }
         public IActionResult Profile()
         {
