@@ -12,7 +12,7 @@ namespace MusicPlayer.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly string _connStr = @"Server=(localdb)\MSSQLLocalDB;Database=MusicLibrary;Trusted_Connection=True;";
+        //private readonly string _connStr = @"Server=(localdb)\MSSQLLocalDB;Database=MusicLibrary;Trusted_Connection=True;";
         private readonly MusicContext _context;
 
         private readonly ILogger<HomeController> _logger;
