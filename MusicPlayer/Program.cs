@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-// 下面兩個命名空間很重要，對應 AddGoogle / AddGitHub 擴充方法
 using Microsoft.AspNetCore.Authentication.Google;
-using AspNet.Security.OAuth.GitHub;
 
 var builder = WebApplication.CreateBuilder(args);
 

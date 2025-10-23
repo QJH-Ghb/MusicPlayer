@@ -5,13 +5,14 @@ using System.Threading.Tasks;
 
 namespace MVC_DB_.Models
 {
-    public class account
+    public class account:DBmanager
     {
-        public int ID { get; set; }
+        public int userID { get; set; }
         public string userName { get; set; }
         public string passWord { get; set; }
         public string email { get; set; }
         public DateTime createTime { get; set; }
+        public bool Avatar { get; set; }
     }
 
 }

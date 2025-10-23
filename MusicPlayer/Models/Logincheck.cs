@@ -13,10 +13,6 @@ namespace MusicPlayer.Models
     /// </summary>
     public class Logincheck
     {
-        // —— 你原本的屬性（可留可移除，不影響邏輯）——
-        public string username { get; set; }
-        public string password { get; set; }
-
         /// <summary>
         /// 登入流程（會做欄位檢查 + 雜湊比對）
         /// </summary>
@@ -45,8 +41,13 @@ namespace MusicPlayer.Models
                 if (user == null)
                     return AuthResult.Fail("帳號或密碼錯誤");
 
-                // 成功
-                return AuthResult.Ok(redirectUrl: "/Home/Index");
+                // 成功，並將該使用者資訊全部打入cookie的token
+                return AuthResult.Ok(
+                    redirectUrl: "/Home/Index",
+                    userId: user.userID,
+                    userName: user.userName,
+                    avatar: user.Avatar
+                    );
             }
             catch (Exception ex)
             {
@@ -127,9 +128,12 @@ namespace MusicPlayer.Models
         public bool Success { get; set; }
         public string Message { get; set; }
         public string RedirectUrl { get; set; }
+        public int? UserId { get; set; }
+        public string? UserName { get; set; }
+        public bool Avatar { get; set; }
 
-        public static AuthResult Ok(string message = null, string redirectUrl = null)
-            => new AuthResult { Success = true, Message = message, RedirectUrl = redirectUrl };
+        public static AuthResult Ok(string message = null, string redirectUrl = null,int ? userId = null, string userName = null,bool avatar= false)
+            => new AuthResult { Success = true, Message = message, RedirectUrl = redirectUrl, UserId = userId, UserName = userName,Avatar = avatar};
 
         public static AuthResult Fail(string message)
             => new AuthResult { Success = false, Message = message };

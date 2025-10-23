@@ -1,0 +1,437 @@
+﻿@{
+    Layout = null;
+	// 從 cookie (claims) 取出 avatar 欄位
+	var avatarClaim = User.FindFirst("avatar")?.Value;
+	bool hasAvatar = avatarClaim == "true"; // claim 儲存時是字串 "true"/"false"
+	string? userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
+
+<style>
+@@white: #fff;
+@@blue: #4b84fe;
+@@colorDark: #1b253d;
+@@colorLight: #99a0b0;
+@@red: #fa5b67;
+@@yellow: #ffbb09;
+@@bg: #f5f5fa;
+@@bgDark: #ede8f0;
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	color: @@colorLight;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background: @@bg;
+	font-size: 16px;
+	line-height: 120%;
+	font-family: Open Sans, Helvetica, sans-serif;
+}
+
+.dashboard {
+	display: grid;
+	width: 100%;
+	height: 100%;
+	grid-gap: 0;
+	grid-template-columns: 300px auto;
+	grid-template-rows: 80px auto;
+  grid-template-areas: 'menu search'
+												'menu content';
+}
+
+.search-wrap {
+	grid-area: search;
+	background: @@white;
+	border-bottom: 1px solid @@bgDark;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 3em;
+	
+	.search {
+		height: 40px;
+		
+		label {
+			display: flex;
+			align-items: center;
+			height: 100%;
+			
+			svg {
+				display: block;
+				
+				path,
+				circle {
+					fill: lighten(@@colorLight, 10%);
+					transition: fill .15s ease;
+				}
+			}
+			
+			input {
+				display: block;
+				padding-left: 1em;
+				height: 100%;
+				margin: 0;
+				border: 0;
+				
+				&:focus {
+					background: @@bg;
+				}
+			}
+			
+			&:hover {
+				svg {
+					path,
+					circle {
+						fill: lighten(@@colorDark, 10%);
+					}
+				}
+			}
+		}
+	}
+	
+	.user-actions {
+		button {
+			border: 0;
+			background: none;
+			width: 32px;
+			height: 32px;
+			margin: 0;
+			padding: 0;
+			margin-left: 0.5em;
+			
+			svg {
+				position: relative;
+				top: 2px;
+				
+				path,
+				circle {
+					fill: lighten(@@colorLight, 10%);
+					transition: fill .15s ease;
+				}
+			}
+			
+			&:hover {
+				svg {
+					path,
+					circle {
+						fill: lighten(@@colorDark, 10%);
+					}
+				}
+			}
+		}
+	}
+}
+
+.menu-wrap {
+	grid-area: menu;
+	padding-bottom: 3em;
+	overflow: auto;
+	background: @@white;
+	border-right: 1px solid @@bgDark;
+	
+	.user {
+		height: 80px;
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		margin: 0;
+		padding: 0 3em;
+		
+		.user-avatar {
+			width: 40px;
+			height: 40px;
+			border-radius: 50%;
+			overflow: hidden;
+			
+			img {
+				display: block;
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+		}
+		
+		figcaption {
+			margin: 0;
+			padding: 0 0 0 1em;
+			color: @@colorDark;
+			font-weight: 700;
+			font-size: 0.875em;
+			line-height: 100%;
+		}
+	}
+	
+	nav {
+		display: block;
+		padding: 0 3em;
+		
+		section {
+			display: block;
+			padding: 3em 0 0;
+		}
+		
+		h3 {
+			margin: 0;
+			font-size: .875em;
+			text-transform: uppercase;
+			color: @@blue;
+			font-weight: 600;
+		}
+		
+		ul {
+			display: block;
+			padding: 0;
+			margin: 0;
+		}
+		
+		li {
+			display: block;
+			padding: 0;
+			margin: 1em 0 0;
+			
+			a {
+				display: flex;
+				align-items: center;
+				justify-content: flex-start;
+				color: @@colorLight;
+				text-decoration: none;
+				font-weight: 600;
+				font-size: .875em;
+				transition: color .15s ease;
+				
+				svg {
+					display: block;
+					margin-right: 1em;
+					
+					path,
+					circle {
+						fill: lighten(@@colorLight, 10%);
+						transition: fill .15s ease;
+					}
+				}
+				
+				&:hover {
+					color: @@colorDark;
+					
+					svg {
+						path,
+						circle  {
+							fill: lighten(@@colorDark, 10%);
+						}
+					}
+				}
+				
+				&.active {
+					color: @@blue;
+					
+					svg {
+						path,
+						circle  {
+							fill: @@blue;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+.content-wrap {
+	grid-area: content;
+	padding: 3em;
+	overflow: auto;
+	
+	.content-head	{
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		
+		h1 {
+			font-size: 1.375em;
+			line-height: 100%;
+			color: @@colorDark;
+			font-weight: 500;
+			margin: 0;
+			padding: 0;
+		}
+		
+		.action {
+			button {
+				border: 0;
+				background: @@blue;
+				color: @@white;
+				width: auto;
+				height: 3.5em;
+				padding: 0 2.25em;
+				border-radius: 3.5em;
+				font-size: 1em;
+				text-transform: uppercase;
+				font-weight: 600;
+				transition: background-color .15s ease;
+				
+				&:hover {
+					background-color: darken(@@blue, 10%);
+					
+					&:active {
+						background-color: darken(@@blue, 20%);
+						transition: none;
+					}
+				}
+			}
+		}
+	}
+
+	.info-boxes {
+		padding: 3em 0 2em;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		grid-gap: 2em;
+		
+		.info-box {
+			background: @@white;
+			height: 160px;
+			display: flex;
+			align-items: center;
+			justify-content: flex-start;
+			padding: 0 3em;
+			border: 1px solid @@bgDark;
+			border-radius: 5px;
+			
+			.box-icon {
+				svg {
+					display: block;
+					width: 48px;
+					height: 48px;
+					
+					path,
+					circle {
+						fill: @@colorLight;
+					}
+				}
+			}
+			
+			.box-content {			
+				padding-left: 1.25em;
+				white-space: nowrap;
+				
+				.big {
+					display: block;
+					font-size: 2em;
+					line-height: 150%;
+					color: @@colorDark;
+				}
+			}
+			
+			&.active {
+				svg {
+					circle,
+					path {
+						fill: @@blue;
+					}
+				}
+			}
+		}
+	}
+	}
+}
+</style>
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Usercolumn</title>
+</head>
+<body>
+	<div class="dashboard">
+		<aside class="search-wrap">
+			<div class="search">
+				<label for="search">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A7.952 7.952 0 0 0 18 10c0-4.411-3.589-8-8-8s-8 3.589-8 8 3.589 8 8 8zm0-14c3.309 0 6 2.691 6 6s-2.691 6-6 6-6-2.691-6-6 2.691-6 6-6z" /></svg>
+					<input type="text" id="search">
+				</label>
+			</div>
+
+			<div class="user-actions">
+				<button>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M13.094 2.085l-1.013-.082a1.082 1.082 0 0 0-.161 0l-1.063.087C6.948 2.652 4 6.053 4 10v3.838l-.948 2.846A1 1 0 0 0 4 18h4.5c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5H20a1 1 0 0 0 .889-1.495L20 13.838V10c0-3.94-2.942-7.34-6.906-7.915zM12 19.5c-.841 0-1.5-.659-1.5-1.5h3c0 .841-.659 1.5-1.5 1.5zM5.388 16l.561-1.684A1.03 1.03 0 0 0 6 14v-4c0-2.959 2.211-5.509 5.08-5.923l.921-.074.868.068C15.794 4.497 18 7.046 18 10v4c0 .107.018.214.052.316l.56 1.684H5.388z" /></svg>
+				</button>
+				<button>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 21c4.411 0 8-3.589 8-8 0-3.35-2.072-6.221-5-7.411v2.223A6 6 0 0 1 18 13c0 3.309-2.691 6-6 6s-6-2.691-6-6a5.999 5.999 0 0 1 3-5.188V5.589C6.072 6.779 4 9.65 4 13c0 4.411 3.589 8 8 8z" /><path d="M11 2h2v10h-2z" /></svg>
+				</button>
+			</div>
+		</aside>
+
+		<header class="menu-wrap">
+			<figure class="user">
+				<div class="user-avatar">
+					@if (hasAvatar)
+					{
+						<!-- 使用者有頭像，顯示個人頭像 -->
+						<img src="@Url.Content($"~/uploads/{userId}.png")"alt="User Avatar"/>
+					}
+					else
+					{
+						<!-- 沒有頭像，顯示預設 M -->
+						<img src="~/image/M.jpg" alt="Default Avatar" />
+					}
+				</div>
+				<figcaption>
+					Amanda King
+				</figcaption>
+			</figure>
+
+			<nav>
+				<section class="dicover">
+					<h3>User</h3>
+
+					<ul>
+						<li>
+							<a href="#">
+								<img src="~/image/24x24.png" alt="Alternate Text" />
+								Setting
+							</a>
+						</li>
+
+						<li>
+							<a href="#">
+								<img src="~/image/24x24.png" alt="Alternate Text" />
+								History
+							</a>
+						</li>
+
+						<li>
+							<a href="#">
+								<img src="~/image/24x24.png" alt="Alternate Text" />
+								Collect
+							</a>
+						</li>
+					</ul>
+				</section>
+			</nav>
+		</header>
+
+		<main class="content-wrap">
+			<header class="content-head">
+				<h1>Societe Generale</h1>
+
+				<div class="action">
+					<button>
+						Save change
+					</button>
+				</div>
+			</header>
+
+			<div class="content">
+			<h3>@userId</h3>
+			</div>
+		</main>
+	</div>
+
+</body>
+</html>

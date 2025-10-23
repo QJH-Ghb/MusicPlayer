@@ -307,7 +307,6 @@
 
 				<div id="message">@ViewBag.Message</div>
 
-				<a href="#">Forgot your password?</a>
 				<button type="button" id="btnSignIn">Sign In</button>
 			</form>
 		</div>
@@ -341,8 +340,8 @@
 		(function () {
 			// ===== 面板切換 =====
 			const container = document.getElementById('container');
-			const overlaySignUpBtn = document.getElementById('signUp'); // 右側透明按鈕
-			const overlaySignInBtn = document.getElementById('signIn'); // 左側透明按鈕
+			const overlaySignUpBtn = document.getElementById('signUp');
+			const overlaySignInBtn = document.getElementById('signIn');
 
 			if (overlaySignUpBtn) {
 				overlaySignUpBtn.addEventListener('click', () => container.classList.add('right-panel-active'));

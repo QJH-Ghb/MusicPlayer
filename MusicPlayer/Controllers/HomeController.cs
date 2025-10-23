@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.DataAnnotations;
@@ -6,6 +7,7 @@ using MusicPlayer.Models;
 using MVC_DB_.Models;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -33,7 +35,8 @@ namespace MusicPlayer.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Login(string username, string password)
+        [AllowAnonymous] // 建議標註，確保未登入也能打這個 Action
+        public async Task<IActionResult> Login(string username, string password)
         {
             bool isAjax =
                 string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) ||
@@ -42,18 +45,39 @@ namespace MusicPlayer.Controllers
             var svc = new Logincheck();
             var result = svc.Login(username, password);
 
-            if (isAjax)
+            if (!result.Success)
             {
-                if (result.Success)
-                    return Json(new { success = true, redirectUrl = Url.Action("Index", "Home") });
-                return Json(new { success = false, message = result.Message });
+                if (isAjax) return Json(new { success = false, message = result.Message });
+                ViewBag.Message = result.Message;
+                return View("~/Views/Login/Login.cshtml");
             }
 
-            if (result.Success)
-                return View("~/Views/Home/Index.cshtml");
+            // 登入成功：建立 Claims
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, result.UserId.ToString()), // 依你的回傳調整
+                new Claim(ClaimTypes.Name, username),
+                new Claim("avatar", result.Avatar ? "true" : "false")
+            };
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme); // "Cookies"
+            var principal = new ClaimsPrincipal(identity);
 
-            ViewBag.Message = result.Message;
-            return View("~/Views/Login/Login.cshtml");
+            // 寫入驗證 Cookie
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme, // 必須與註冊的 scheme 一致
+                principal,
+                new AuthenticationProperties
+                {
+                    IsPersistent = true,                                  // 若有「記住我」再用參數控制
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
+                });
+
+            // 回應
+            if (isAjax)
+                return Json(new { success = true, redirectUrl = Url.Action("Index", "Home") });
+
+            // 避免重整造成表單重送
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpPost]
@@ -110,10 +134,16 @@ namespace MusicPlayer.Controllers
                 return RedirectToAction("Login");
             }
 
-            // 這裡你可進一步：建立/綁定本地帳號（DBmanager）→ 已在前面教學提供範例
-            // 先回去 returnUrl
             return LocalRedirect(returnUrl);
         }
+
+        [Authorize]
+        public IActionResult Usercolumn()
+        {
+
+            return View("~/Views/Home/Usercolumn.cshtml");
+        }
+
         public IActionResult Privacy()
         {
             return View();

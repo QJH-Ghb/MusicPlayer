@@ -27,11 +27,12 @@ namespace MVC_DB_.Models
                 {
                     account account = new account
                     {
-                        ID = reader.GetInt32(reader.GetOrdinal("UserID")),
+                        userID = reader.GetInt32(reader.GetOrdinal("UserID")),
                         userName = reader.GetString(reader.GetOrdinal("UserName")),
                         passWord = reader.GetString(reader.GetOrdinal("Password")),
                         email = reader.GetString(reader.GetOrdinal("Email")),
                         createTime = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
+                        Avatar = reader.GetBoolean(reader.GetOrdinal("avatar")),
                     };
                     accounts.Add(account);
                 }
@@ -47,12 +48,13 @@ namespace MVC_DB_.Models
         public void newAccount(account user)
         {
             SqlConnection sqlconnection = new SqlConnection(connStr);
-            SqlCommand sqlcommand = new SqlCommand(@"INSERT INTO Users(UserName,Password,Email) VALUES(@username,@password,@email)");
+            SqlCommand sqlcommand = new SqlCommand(@"INSERT INTO Users(UserName,Password,Email,avatar) VALUES(@username,@password,@email,@avatar)");
             sqlcommand.Connection = sqlconnection;
 
             sqlcommand.Parameters.Add(new SqlParameter("@username", user.userName));
             sqlcommand.Parameters.Add(new SqlParameter("@password", user.passWord));
             sqlcommand.Parameters.Add(new SqlParameter("@email", user.email));
+            sqlcommand.Parameters.Add(new SqlParameter("@avatar", user.Avatar=false));
 
             sqlconnection.Open();
             sqlcommand.ExecuteNonQuery();
