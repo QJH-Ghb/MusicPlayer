@@ -32,7 +32,6 @@ namespace MVC_DB_.Models
                         passWord = reader.GetString(reader.GetOrdinal("Password")),
                         email = reader.GetString(reader.GetOrdinal("Email")),
                         createTime = reader.GetDateTime(reader.GetOrdinal("CreatedAt")),
-                        Avatar = reader.GetBoolean(reader.GetOrdinal("avatar")),
                     };
                     accounts.Add(account);
                 }
@@ -54,8 +53,7 @@ namespace MVC_DB_.Models
             sqlcommand.Parameters.Add(new SqlParameter("@username", user.userName));
             sqlcommand.Parameters.Add(new SqlParameter("@password", user.passWord));
             sqlcommand.Parameters.Add(new SqlParameter("@email", user.email));
-            sqlcommand.Parameters.Add(new SqlParameter("@avatar", user.Avatar=false));
-
+            
             sqlconnection.Open();
             sqlcommand.ExecuteNonQuery();
             sqlconnection.Close();

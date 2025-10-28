@@ -7,6 +7,7 @@ using MusicPlayer.Models;
 using MVC_DB_.Models;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Reflection;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -42,6 +43,10 @@ namespace MusicPlayer.Controllers
                 string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) ||
                 (Request.Headers["Accept"].ToString()?.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0;
 
+            // 基本清理
+            username = username?.Trim();
+            password = password?.Trim();
+
             var svc = new Logincheck();
             var result = svc.Login(username, password);
 
@@ -52,12 +57,21 @@ namespace MusicPlayer.Controllers
                 return View("~/Views/Login/Login.cshtml");
             }
 
+            // ====== 登入成功：動態檢查頭像檔是否存在 ======
+            var userIdStr = result.UserId.ToString();
+            var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "image", $"{userIdStr}.png");
+            bool hasAvatar = System.IO.File.Exists(imagePath);
+
+            // 順便提供前端可直接用的 AvatarUrl（若沒有就給預設）
+            string avatarUrl = hasAvatar ? $"/image/{userIdStr}.png" : "/image/default.png";
+
             // 登入成功：建立 Claims
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, result.UserId.ToString()), // 依你的回傳調整
                 new Claim(ClaimTypes.Name, username),
-                new Claim("avatar", result.Avatar ? "true" : "false")
+                new Claim("avatarUrl", avatarUrl) // 方便前端直接顯示
+                // new Claim("LoginProvider", "Local") // 若要判斷登入來源可加
             };
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme); // "Cookies"
             var principal = new ClaimsPrincipal(identity);
@@ -116,6 +130,11 @@ namespace MusicPlayer.Controllers
             // 處理完再把使用者 redirect 到這裡設定的 RedirectUri（即我們自己的 Callback）
             var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Home", new { returnUrl });
             var props = new AuthenticationProperties { RedirectUri = redirectUrl };
+
+            // 把想帶進 callback 的資訊放在 Items 裡
+            props.Items["returnUrl"] = returnUrl;
+            props.Items["scheme"] = provider;
+
             return Challenge(props, provider);
         }
 
@@ -126,14 +145,55 @@ namespace MusicPlayer.Controllers
         [Route("externallogin-callback")]
         public async Task<IActionResult> ExternalLoginCallback(string returnUrl = "/Home/Index")
         {
+            // 從外部登入 cookie 取回使用者（這裡才拿得到外部 claims）
+            var extAuth = await HttpContext.AuthenticateAsync("External");
             // 此時使用者已經由 Cookie Scheme 登入（Program.cs 設了 DefaultScheme = Cookies）
-            // 你可以從 HttpContext.User 取到 claims；此處示範最小檢查
-            if (!(User?.Identity?.IsAuthenticated ?? false))
+            // 不檢查 User.Identity.IsAuthenticated（此時還沒簽你自己的 Cookies）
+            // 應該檢查 extAuth.Succeeded / extAuth.Principal
+            if (!extAuth.Succeeded || extAuth.Principal == null)
             {
-                TempData["AlertMessage"] = "外部登入失敗，請再試一次。";
+                // 失敗：印出 Failure 訊息
+                var reason = extAuth.Failure?.Message ?? "未知原因";
+                TempData["AlertMessage"] = "外部登入失敗：" + reason;
                 return RedirectToAction("Login");
             }
+            // 取外部提供的資訊
+            var extUser = extAuth.Principal!;
+            var provider = extAuth.Properties?.Items.TryGetValue("scheme", out var s) 
+                == true ? s : "External";
+            var nameId = extUser.FindFirst(ClaimTypes.NameIdentifier)?.Value        // OIDC 會對應到 sub
+                           ?? extUser.FindFirst("sub")?.Value;
+            var name = extUser.FindFirst(ClaimTypes.Name)?.Value
+                           ?? extUser.Identity?.Name
+                           ?? "User";
+            var email = extUser.FindFirst(ClaimTypes.Email)?.Value;
 
+            // ====== 登入成功：動態檢查頭像檔是否存在 ======
+            var userId = nameId;
+            var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "image", $"{userId}.png");
+            bool hasAvatar = System.IO.File.Exists(imagePath);
+
+            // 順便提供前端可直接用的 AvatarUrl（若沒有就給預設）
+            string avatarUrl = hasAvatar ? $"/image/{userId}.png" : "/image/M.png";
+
+            // 建立你自己的應用程式 Cookie（之後用 User 讀取）
+            var appClaims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim(ClaimTypes.Name, name),
+                new Claim(ClaimTypes.Email, email ?? string.Empty),
+                new Claim("LoginProvider", provider),        // 方便之後判斷是否第三方以及來源
+                new Claim("avatarUrl", avatarUrl)
+            };
+            var identity = new ClaimsIdentity(appClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            // 清掉外部暫時性 cookie
+            await HttpContext.SignOutAsync("External");
+
+            // 防止開放式重導，只允許站內 URL
+            if (!Url.IsLocalUrl(returnUrl)) returnUrl = Url.Action("Index", "Home")!;
             return LocalRedirect(returnUrl);
         }
 
@@ -143,7 +203,88 @@ namespace MusicPlayer.Controllers
 
             return View("~/Views/Home/Usercolumn.cshtml");
         }
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> UploadFile(Fileupload file)
+        {
+            // 判斷是否為 Ajax 請求
+            bool isAjax =
+            string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase) ||
+            (Request.Headers["Accept"].ToString()?.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) ?? -1) >= 0;
+            // 檔案是否為空
+            if (file == null || file.FormFile == null || file.FormFile.Length == 0)
+            {
+            if (isAjax)
+                return Json(new { success = false, message = "未選擇檔案" });
+                ViewBag.Message = "請選擇檔案";
+                return View("~/Views/Home/Usercolumn.cshtml");
+            }
+            try
+            {
+                // 檔案資訊
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "image");
+                // 確保目錄存在
+                if (!Directory.Exists(uploadPath))
+                {
+                    Directory.CreateDirectory(uploadPath);
+                }
+                // 檢查檔案類型
+                var ext = Path.GetExtension(file.FormFile.FileName).ToLower();
+                var allowedExts = new[] {".png" };
+                if (!allowedExts.Contains(ext))
+                {
+                    if (isAjax)
+                        return Json(new { success = false, message = "只允許上傳 .png 檔案" });
 
+                    ViewBag.Message = "只允許上傳 .png 檔案";
+                    return View("~/Views/Home/Usercolumn.cshtml");
+                }
+                // 儲存檔案
+                var fileName = $"{userId}{ext}";
+                var filePath = Path.Combine(uploadPath, fileName);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.FormFile.CopyToAsync(stream);
+                }
+                // ===== 更新登入 cookie 的 avatarUrl =====
+                var user = User as ClaimsPrincipal;
+                if (user != null)
+                {
+                    var identity = user.Identity as ClaimsIdentity;
+                    if (identity != null)
+                    {
+                        var oldAvatar = identity.FindFirst("avatarUrl");
+                        if (oldAvatar != null)
+                            identity.RemoveClaim(oldAvatar);
+
+                        var newAvatarUrl = $"/image/{userId}.png";
+                        identity.AddClaim(new Claim("avatarUrl", newAvatarUrl));
+
+                        await HttpContext.SignInAsync(
+                            CookieAuthenticationDefaults.AuthenticationScheme,
+                            new ClaimsPrincipal(identity),
+                            new AuthenticationProperties
+                            {
+                                IsPersistent = true,
+                                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
+                            });
+                    }
+                }
+                if (isAjax)
+                    return Json(new { success = true, message = "上傳成功！", fileName = fileName });
+                ViewBag.Message = "上傳成功！";
+                return View("~/Views/Home/Usercolumn.cshtml");
+            }
+            catch (Exception ex)
+            {
+                if (isAjax)
+                    return Json(new { success = false, message = "系統錯誤：" + ex.Message });
+
+                ViewBag.Message = "系統錯誤：" + ex.Message;
+                return View("~/Views/Home/Usercolumn.cshtml");
+            }
+        }
         public IActionResult Privacy()
         {
             return View();

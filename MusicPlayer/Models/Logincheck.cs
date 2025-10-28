@@ -10,12 +10,12 @@ namespace MusicPlayer.Models
 {
     /// <summary>
     /// 封裝登入/註冊邏輯的服務類
-    /// </summary>
+    /// <summary>
     public class Logincheck
     {
         /// <summary>
         /// 登入流程（會做欄位檢查 + 雜湊比對）
-        /// </summary>
+        /// <summary>
         public AuthResult Login(string inputUser, string inputPass)
         {
             // 必填驗證
@@ -45,8 +45,7 @@ namespace MusicPlayer.Models
                 return AuthResult.Ok(
                     redirectUrl: "/Home/Index",
                     userId: user.userID,
-                    userName: user.userName,
-                    avatar: user.Avatar
+                    userName: user.userName
                     );
             }
             catch (Exception ex)
@@ -130,10 +129,9 @@ namespace MusicPlayer.Models
         public string RedirectUrl { get; set; }
         public int? UserId { get; set; }
         public string? UserName { get; set; }
-        public bool Avatar { get; set; }
 
-        public static AuthResult Ok(string message = null, string redirectUrl = null,int ? userId = null, string userName = null,bool avatar= false)
-            => new AuthResult { Success = true, Message = message, RedirectUrl = redirectUrl, UserId = userId, UserName = userName,Avatar = avatar};
+        public static AuthResult Ok(string message = null, string redirectUrl = null,int ? userId = null, string userName = null)
+            => new AuthResult { Success = true, Message = message, RedirectUrl = redirectUrl, UserId = userId, UserName = userName };
 
         public static AuthResult Fail(string message)
             => new AuthResult { Success = false, Message = message };

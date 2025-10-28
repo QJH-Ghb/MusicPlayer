@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 // MVC
 builder.Services.AddControllersWithViews();
 
-// （可選）偵錯用：確認是否讀到設定值
+// 偵錯用：確認是否讀到設定值
 var gid = builder.Configuration["Authentication:Google:ClientId"];
 var gsec = builder.Configuration["Authentication:Google:ClientSecret"];
 Console.WriteLine($"[CFG] Google ClientId={(string.IsNullOrEmpty(gid) ? "<NULL>" : gid.Substring(0, Math.Min(gid.Length, 8)) + "...")}");
@@ -20,22 +20,30 @@ Console.WriteLine($"[CFG] Google ClientSecret={(string.IsNullOrEmpty(gsec) ? "<N
 builder.Services
     .AddAuthentication(options =>
     {
-        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme; // "Cookies"
-        // 不要把 DefaultChallengeScheme 設成 Cookies；保留預設或在需要時指定
+        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        // "Cookies"
+        // 不把 DefaultChallengeScheme 設成 Cookies；保留預設或在需要時指定
     })
     .AddCookie(options =>
     {
         options.LoginPath = "/Home/Login";
         options.LogoutPath = "/Home/Logout";
+        options.AccessDeniedPath = "/Home/AccessDenied";
         options.SlidingExpiration = true;
     })
+    // 暫存外部登入票據的 Cookie（ Controller 會用到 "External"）
+    .AddCookie("External")
+    // Google OAuth
     .AddGoogle(options =>
     {
         options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
         options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+        // 讓 Google 將外部登入結果寫進 "External" 暫存 cookie
+        options.SignInScheme = "External";
         options.SaveTokens = true;
         options.Scope.Add("email");
         options.Scope.Add("profile");
+        // 如需自訂回呼路徑（對應你 Controller 的 Route），可解除註解
         // options.CallbackPath = "/externallogin-callback";
     });
 
@@ -54,6 +62,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// 順序：Authentication -> Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 

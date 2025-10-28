@@ -1,1 +1,9 @@
 QJhtest 123456789aa
+
+請改用 User Secrets：
+
+dotnet user-secrets set "Authentication:Google:ClientId" "你的ClientID"
+dotnet user-secrets set "Authentication:Google:ClientSecret" "你的ClientSecret"
+
+
+這樣 appsettings.json 可以保持乾淨，而程式仍會自動讀到。

@@ -370,19 +370,14 @@ body {
 		<header class="menu-wrap">
 			<figure class="user">
 				<div class="user-avatar">
-					@if (hasAvatar)
-					{
-						<!-- 使用者有頭像，顯示個人頭像 -->
-						<img src="@Url.Content($"~/uploads/{userId}.png")"alt="User Avatar"/>
-					}
-					else
-					{
-						<!-- 沒有頭像，顯示預設 M -->
-						<img src="~/image/M.jpg" alt="Default Avatar" />
-					}
+					@using System.Security.Claims
+					<img id="avatarImg"
+						 src="@($"/image/{userId}.png")"
+						 asp-append-version="true"
+						 alt="avatar" />
 				</div>
 				<figcaption>
-					Amanda King
+					@User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
 				</figcaption>
 			</figure>
 
@@ -392,24 +387,8 @@ body {
 
 					<ul>
 						<li>
-							<a href="#">
-								<img src="~/image/24x24.png" alt="Alternate Text" />
-								Setting
-							</a>
-						</li>
-
-						<li>
-							<a href="#">
-								<img src="~/image/24x24.png" alt="Alternate Text" />
-								History
-							</a>
-						</li>
-
-						<li>
-							<a href="#">
-								<img src="~/image/24x24.png" alt="Alternate Text" />
-								Collect
-							</a>
+							<img src="~/image/24x24.png" alt="Alternate Text" />
+							Setting
 						</li>
 					</ul>
 				</section>
@@ -418,20 +397,45 @@ body {
 
 		<main class="content-wrap">
 			<header class="content-head">
-				<h1>Societe Generale</h1>
-
-				<div class="action">
-					<button>
-						Save change
-					</button>
-				</div>
+				<h1>Setting</h1>
 			</header>
-
 			<div class="content">
-			<h3>@userId</h3>
+				<h3>上傳頭像</h3>
+				<form id="uploadForm" enctype="multipart/form-data">
+					<input type="file" name="FormFile" id="fileInput" />
+					<button type="button" id="btnUpload">Upload</button>
+					<div id="uploadMsg"></div>
+				</form>
 			</div>
 		</main>
 	</div>
+	<script>
+		document.getElementById("btnUpload").addEventListener("click", async () => {
+			const form = document.getElementById("uploadForm");
+			const msg = document.getElementById("uploadMsg");
+			const fd = new FormData(form);
 
+			msg.textContent = "Uploading...";
+
+			try {
+				const res = await fetch("/Home/UploadFile", {
+					method: "POST",
+					body: fd,
+					headers: {
+						"X-Requested-With": "XMLHttpRequest"
+					}
+				});
+
+				const result = await res.json();
+
+				if (result.success)
+					msg.textContent = "頭像上傳成功: " + result.fileName;
+				else
+					msg.textContent = "頭像上傳失敗: " + result.message;
+			} catch (err) {
+				msg.textContent = "Error: " + err.message;
+			}
+		});
+	</script>
 </body>
 </html>

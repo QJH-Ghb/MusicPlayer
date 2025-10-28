@@ -12,7 +12,6 @@ namespace MVC_DB_.Models
         public string passWord { get; set; }
         public string email { get; set; }
         public DateTime createTime { get; set; }
-        public bool Avatar { get; set; }
     }
 
 }
