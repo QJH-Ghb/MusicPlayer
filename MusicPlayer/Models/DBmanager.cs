@@ -50,7 +50,7 @@ namespace MVC_DB_.Models
         public void newAccount(account user)
         {
             SqlConnection sqlconnection = new SqlConnection(connStr);
-            SqlCommand sqlcommand = new SqlCommand(@"INSERT INTO Users(UserName,Password,Email,avatar) VALUES(@username,@password,@email,@avatar)");
+            SqlCommand sqlcommand = new SqlCommand(@"INSERT INTO Users(UserName,Password,Email) VALUES(@username,@password,@email)");
             sqlcommand.Connection = sqlconnection;
 
             sqlcommand.Parameters.Add(new SqlParameter("@username", user.userName));
