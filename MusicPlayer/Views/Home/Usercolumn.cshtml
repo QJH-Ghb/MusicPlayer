@@ -407,35 +407,189 @@ body {
 					<div id="uploadMsg"></div>
 				</form>
 			</div>
+			<!-- 取得 Anti-Forgery Token（供 AJAX 使用）-->
+			<form id="addSongForm">
+				@Html.AntiForgeryToken()
+				<div class="song-actions" style="margin:16px 0;">
+					<select id="allSongsSelect" style="min-width:280px;height:36px;">
+						<option value="">載入中…</option>
+					</select>
+					<button type="button" id="btnAddSong" style="height:36px;margin-left:8px;">新增</button>
+					<span id="addMsg" style="margin-left:12px;color:#666;"></span>
+				</div>
+			</form>
+			<div id="songList">載入中...</div>
 		</main>
 	</div>
 	<script>
+		// ====== 頭像上傳 ======
 		document.getElementById("btnUpload").addEventListener("click", async () => {
-			const form = document.getElementById("uploadForm");
-			const msg = document.getElementById("uploadMsg");
-			const fd = new FormData(form);
+		  const form = document.getElementById("uploadForm");
+		  const msg = document.getElementById("uploadMsg");
+		  const fd = new FormData(form);
 
-			msg.textContent = "Uploading...";
+		  msg.textContent = "Uploading...";
 
-			try {
-				const res = await fetch("/Home/UploadFile", {
-					method: "POST",
-					body: fd,
-					headers: {
-						"X-Requested-With": "XMLHttpRequest"
-					}
-				});
+		  try {
+			const res = await fetch("/Home/UploadFile", {
+			  method: "POST",
+			  body: fd,
+			  headers: { "X-Requested-With": "XMLHttpRequest" }
+			});
+			const result = await res.json();
 
-				const result = await res.json();
+			if (result.success) {
+			  msg.textContent = "頭像上傳成功: " + result.fileName;
 
-				if (result.success)
-					msg.textContent = "頭像上傳成功: " + result.fileName;
-				else
-					msg.textContent = "頭像上傳失敗: " + result.message;
-			} catch (err) {
-				msg.textContent = "Error: " + err.message;
+			  // 即時刷新頭像（避免快取）
+			  const userId = "@userId";
+			  const img = document.getElementById("avatarImg");
+			  if (userId && img) img.src = `/image/${userId}.png?ts=${Date.now()}`;
+			} else {
+			  msg.textContent = "頭像上傳失敗: " + (result.message || "");
 			}
+		  } catch (err) {
+			msg.textContent = "Error: " + err.message;
+		  }
+		});
+
+		// ====== 載入「使用者的歌曲清單」到下方列表 ======
+		async function loadSongs(userId) {
+		  if (!userId) {
+			document.getElementById("songList").textContent = "未登入或無使用者 ID";
+			return;
+		  }
+
+		  try {
+			const res = await fetch(`/Home/GetSongs?userId=${encodeURIComponent(userId)}`);
+			const data = await res.json();
+
+			const container = document.getElementById("songList");
+			container.innerHTML = "";
+
+			if (!data.success) {
+			  container.textContent = data.message || "無播放清單";
+			  return;
+			}
+
+			// 動態建立歌曲列表，每首右邊加「移除」按鈕
+			data.songs.forEach(song => {
+			  const div = document.createElement("div");
+			  div.style.display = "flex";
+			  div.style.alignItems = "center";
+			  div.style.justifyContent = "space-between";
+			  div.style.marginBottom = "6px";
+
+			  const info = document.createElement("span");
+			  info.innerHTML = `🎵 <b>${song.title}</b> — ${song.artist}`;
+			  div.appendChild(info);
+
+			  const btn = document.createElement("button");
+			  btn.textContent = "移除";
+			  btn.style.marginLeft = "10px";
+			  btn.style.padding = "3px 8px";
+			  btn.style.border = "1px solid #ccc";
+			  btn.style.background = "#f8f8f8";
+			  btn.style.cursor = "pointer";
+			  btn.onclick = () => removeSong(song.songID, userId, div);
+
+			  div.appendChild(btn);
+			  container.appendChild(div);
+			});
+		  } catch (e) {
+			document.getElementById("songList").textContent = "載入失敗：" + e.message;
+		  }
+		}
+
+		// ====== 移除歌曲 ======
+		async function removeSong(songId, userId, element) {
+		  if (!confirm("確定要移除此歌曲嗎？")) return;
+
+		  try {
+			const res = await fetch(`/Home/RemoveFromPlaylist?songId=${songId}&userId=${userId}`, {
+			  method: "POST",
+			  headers: { "X-Requested-With": "XMLHttpRequest" }
+			});
+			const data = await res.json();
+
+			if (data.success) {
+			  element.remove(); // 從畫面刪掉
+			} else {
+			  alert(data.message || "移除失敗");
+			}
+		  } catch (e) {
+			alert("移除失敗：" + e.message);
+		  }
+		}
+
+		// ====== 載入「所有歌曲」到上方下拉選單 ======
+		async function loadAllSongs() {
+		  const sel = document.getElementById('allSongsSelect');
+		  try {
+			const res = await fetch('/Home/GetAllSongs');
+			const data = await res.json();
+
+			sel.innerHTML = '';
+			if (!data.success || !data.songs || data.songs.length === 0) {
+			  sel.innerHTML = '<option value="">無可選歌曲</option>';
+			  return;
+			}
+
+			data.songs.forEach(s => {
+			  const opt = document.createElement('option');
+			  opt.value = s.songID;
+			  opt.textContent = `${s.title} — ${s.artist}`;
+			  sel.appendChild(opt);
+			});
+		  } catch {
+			sel.innerHTML = '<option value="">載入失敗</option>';
+		  }
+		}
+
+		// ====== 新增選中歌曲到使用者播放清單 ======
+		document.getElementById('btnAddSong').addEventListener('click', async () => {
+		  const sel = document.getElementById('allSongsSelect');
+		  const songId = sel.value;
+		  const msg = document.getElementById('addMsg');
+		  const token = document.querySelector('#addSongForm input[name="__RequestVerificationToken"]')?.value || '';
+		  const userId = "@userId";
+
+		  if (!songId) { msg.textContent = '請先選擇歌曲'; return; }
+		  if (!userId) { msg.textContent = '未登入或無使用者 ID'; return; }
+
+		  msg.textContent = '新增中…';
+
+		  try {
+			const body = new URLSearchParams({ songId, userId });
+			const res = await fetch('/Home/AddToPlaylist', {
+			  method: 'POST',
+			  headers: {
+				'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+				'X-Requested-With': 'XMLHttpRequest',
+				'RequestVerificationToken': token
+			  },
+			  body: body.toString()
+			});
+			const data = await res.json();
+
+			if (data.success) {
+			  msg.textContent = data.message || '已加入';
+			  loadSongs(userId);
+			} else {
+			  msg.textContent = data.message || '新增失敗';
+			}
+		  } catch (e) {
+			msg.textContent = '新增失敗：' + e.message;
+		  }
+		});
+
+		// ====== 初始化 ======
+		document.addEventListener("DOMContentLoaded", () => {
+		  const uid = "@userId";
+		  loadAllSongs();
+		  loadSongs(uid);
 		});
 	</script>
+
 </body>
 </html>

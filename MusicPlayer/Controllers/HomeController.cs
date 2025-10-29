@@ -200,8 +200,69 @@ namespace MusicPlayer.Controllers
         [Authorize]
         public IActionResult Usercolumn()
         {
-
+            Userlist userlist = new Userlist();
+            userlist.getList(int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value));
             return View("~/Views/Home/Usercolumn.cshtml");
+        }
+        [HttpGet]
+        public IActionResult GetSongs(int userId)
+        {
+            var db = new DBmanager();
+            var songs = db.GetSongsByUser(userId);
+
+            if (songs == null || songs.Count == 0)
+                return Json(new { success = false, message = "沒有歌曲" });
+
+            return Json(new { success = true, songs = songs });
+        }
+        [HttpGet]
+        public IActionResult GetAllSongs()
+        {
+            var db = new DBmanager();
+            var songs = db.GetAllSongs(); // 每筆含 SongID/Title/Artist
+
+            if (songs == null || songs.Count == 0)
+                return Json(new { success = false, message = "沒有歌曲" });
+
+            var dto = songs.Select(s => new { songID = s.SongID, title = s.Title, artist = s.Artist }).ToList();
+            return Json(new { success = true, songs = dto });
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult AddToPlaylist(int songId, int? userId) // userId 可省略，亦可從 Claims 取
+        {
+            try
+            {
+                // Claims 為主，避免前端竄改
+                var uidStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(uidStr)) return Json(new { success = false, message = "未登入" });
+                int uid = int.Parse(uidStr);
+
+                var db = new DBmanager();
+                var affected = db.NewCollectIfNotExists(uid, songId);
+                if (affected == 0)
+                    return Json(new { success = true, message = "已在清單中" });
+
+                return Json(new { success = true, message = "已加入" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "系統錯誤：" + ex.Message });
+            }
+        }
+        [HttpPost]
+        public IActionResult RemoveFromPlaylist(int songId, int userId)
+        {
+            try
+            {
+                var db = new DBmanager();
+                db.RemoveFromPlaylist(userId, songId);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
         }
         [Authorize]
         [HttpPost]

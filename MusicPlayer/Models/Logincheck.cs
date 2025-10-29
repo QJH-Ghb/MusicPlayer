@@ -127,6 +127,7 @@ namespace MusicPlayer.Models
         public bool Success { get; set; }
         public string Message { get; set; }
         public string RedirectUrl { get; set; }
+        // int? 是 Nullable<int> 的語法糖。 表示「可為 null 的整數」(nullable int)。
         public int? UserId { get; set; }
         public string? UserName { get; set; }
 

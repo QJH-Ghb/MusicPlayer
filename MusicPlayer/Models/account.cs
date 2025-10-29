@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace MVC_DB_.Models
 {
-    public class account:DBmanager
+    public class account
     {
         public int userID { get; set; }
         public string userName { get; set; }
