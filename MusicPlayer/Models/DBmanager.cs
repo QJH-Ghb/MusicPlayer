@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace MVC_DB_.Models
@@ -185,6 +186,96 @@ namespace MVC_DB_.Models
             cmd.Parameters.AddWithValue("@sid", songId);
             cmd.ExecuteNonQuery();
         }
+        public int GetOrCreateLocalUserIdByExternal(string provider, string externalKey, string? name, string? email)
+        {
+            if (string.IsNullOrWhiteSpace(provider)) throw new ArgumentException("provider is required");
+            if (string.IsNullOrWhiteSpace(externalKey)) throw new ArgumentException("externalKey is required");
+
+            using var conn = new SqlConnection(connStr);
+            conn.Open();
+            using var tran = conn.BeginTransaction();
+
+            try
+            {
+                // 1) 先查是否已有映射
+                using (var cmd = new SqlCommand(@"
+                    SELECT UE.UserID
+                    FROM dbo.UsersExternal UE
+                    WHERE UE.Provider = @p AND UE.ExternalKey = @k;
+                    ", conn, tran))
+                {
+                    cmd.Parameters.AddWithValue("@p", provider);
+                    cmd.Parameters.AddWithValue("@k", externalKey);
+                    var existing = cmd.ExecuteScalar();
+                    if (existing != null && existing != DBNull.Value)
+                    {
+                        tran.Commit();
+                        return Convert.ToInt32(existing);
+                    }
+                }
+
+                // 2) 若沒有映射：先試著用 Email 找看是否已有本地帳號（使用者先註冊、後綁定）
+                int? userIdByEmail = null;
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    using var cmdFindByEmail = new SqlCommand(@"
+                    SELECT TOP 1 U.UserID FROM dbo.Users U WHERE U.Email = @em;
+                    ", conn, tran);
+                    cmdFindByEmail.Parameters.AddWithValue("@em", email!);
+                    var found = cmdFindByEmail.ExecuteScalar();
+                    if (found != null && found != DBNull.Value)
+                        userIdByEmail = Convert.ToInt32(found);
+                }
+
+                int localUserId;
+                if (userIdByEmail.HasValue)
+                {
+                    localUserId = userIdByEmail.Value;
+                }
+                else
+                {
+                    // 3) 建立新的本地 Users 資料列（UserName 需避免撞名）
+                    // 產生一個安全的使用者名稱（純示範）：ext-<provider>-<6位隨機>
+                    string baseUserName = GenerateSafeUserName(name, provider);
+
+                    // 確保不撞名：若撞名就加編號尾碼
+                    string finalUserName = EnsureUniqueUserName(conn, tran, baseUserName);
+
+                    using var cmdInsertUser = new SqlCommand(@"
+                        INSERT INTO dbo.Users (UserName, Password, Email, CreatedAt)
+                        OUTPUT INSERTED.UserID
+                        VALUES (@un, @pw, @em, SYSUTCDATETIME());
+                        ", conn, tran);
+
+                    cmdInsertUser.Parameters.AddWithValue("@un", finalUserName);
+                    // 外部登入無密碼，本地密碼留空字串或預設值（視你的 schema 規則）
+                    cmdInsertUser.Parameters.AddWithValue("@pw", "");
+                    cmdInsertUser.Parameters.AddWithValue("@em", (object?)email ?? DBNull.Value);
+
+                    localUserId = Convert.ToInt32(cmdInsertUser.ExecuteScalar());
+                }
+
+                // 4) 寫入映射表
+                using (var cmdMap = new SqlCommand(@"
+                        INSERT INTO dbo.UsersExternal (UserID, Provider, ExternalKey)
+                        VALUES (@uid, @p, @k);
+                        ", conn, tran))
+                {
+                    cmdMap.Parameters.AddWithValue("@uid", localUserId);
+                    cmdMap.Parameters.AddWithValue("@p", provider);
+                    cmdMap.Parameters.AddWithValue("@k", externalKey);
+                    cmdMap.ExecuteNonQuery();
+                }
+
+                tran.Commit();
+                return localUserId;
+            }
+            catch
+            {
+                try { tran.Rollback(); } catch { /* ignore */ }
+                throw;
+            }
+        }
         public bool CheckAccountExists(string username)
         {
             using (SqlConnection sqlconnection = new SqlConnection(connStr))
@@ -200,6 +291,53 @@ namespace MVC_DB_.Models
 
                     return count > 0; // 若 >=1 則帳號存在
                 }
+            }
+        }
+        private static string GenerateSafeUserName(string? name, string provider)
+        {
+            string baseName = string.IsNullOrWhiteSpace(name) ? "user" : name.Trim();
+
+            // 去掉不適合當帳號的符號（僅保留字母數字與 _ - .）
+            var filtered = new StringBuilder();
+            foreach (var ch in baseName)
+            {
+                if (char.IsLetterOrDigit(ch) || ch == '_' || ch == '-' || ch == '.')
+                    filtered.Append(ch);
+            }
+            if (filtered.Length == 0) filtered.Append("user");
+
+            // 簡短化，避免太長（依你的 Users.UserName 長度調整，這裡示範 24）
+            var shortName = filtered.Length > 24 ? filtered.ToString(0, 24) : filtered.ToString();
+
+            // 加上 provider 與隨機尾碼，降低撞名機率
+            var rnd = new Random();
+            var tail = rnd.Next(0, 999999).ToString("000000");
+            return $"ext-{provider}-{shortName}-{tail}";
+        }
+        private static string EnsureUniqueUserName(SqlConnection conn, SqlTransaction tran, string baseUserName)
+        {
+            // 假設 UserName 有 UNIQUE 索引（或至少當成邏輯唯一）
+            string candidate = baseUserName;
+            int suffix = 0;
+
+            while (true)
+            {
+                using var cmd = new SqlCommand(@"
+                SELECT COUNT(1) FROM dbo.Users WHERE UserName = @un;
+                ", conn, tran);
+                cmd.Parameters.AddWithValue("@un", candidate);
+                int count = Convert.ToInt32(cmd.ExecuteScalar());
+
+                if (count == 0) return candidate;
+
+                suffix++;
+                // 控制長度避免超過欄位限制（假設 50 字元）
+                string trimmed = baseUserName;
+                const int maxLen = 50;
+                if (trimmed.Length > maxLen - 1 - suffix.ToString().Length)
+                    trimmed = trimmed.Substring(0, maxLen - 1 - suffix.ToString().Length);
+
+                candidate = $"{trimmed}-{suffix}";
             }
         }
     }

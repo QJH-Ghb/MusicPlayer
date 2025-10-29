@@ -167,22 +167,30 @@ namespace MusicPlayer.Controllers
                            ?? extUser.Identity?.Name
                            ?? "User";
             var email = extUser.FindFirst(ClaimTypes.Email)?.Value;
-
+            // 外部供應商的唯一識別（字串，可能很長）
+            var externalKey =
+                extUser.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                extUser.FindFirst("sub")?.Value ??
+                throw new Exception("外部ID缺失");
+            // ★ 取得「本地整數」UserId（沒有就建立）
+            var db = new DBmanager(); // 你現有的資料層
+            int localUid = db.GetOrCreateLocalUserIdByExternal(provider, externalKey, name, email);
             // ====== 登入成功：動態檢查頭像檔是否存在 ======
-            var userId = nameId;
-            var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "image", $"{userId}.png");
+            // 檔名/頭像一律用本地 uid
+            var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "image", $"{localUid}.png");
             bool hasAvatar = System.IO.File.Exists(imagePath);
-
             // 順便提供前端可直接用的 AvatarUrl（若沒有就給預設）
-            string avatarUrl = hasAvatar ? $"/image/{userId}.png" : "/image/M.png";
+            string avatarUrl = hasAvatar ? $"/image/{localUid}.png" : "/image/M.png";
 
             // 建立你自己的應用程式 Cookie（之後用 User 讀取）
             var appClaims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim(ClaimTypes.NameIdentifier, localUid.ToString()),
                 new Claim(ClaimTypes.Name, name),
                 new Claim(ClaimTypes.Email, email ?? string.Empty),
-                new Claim("LoginProvider", provider),        // 方便之後判斷是否第三方以及來源
+                // 另外保存外部資訊（不要用來當主鍵）
+                new Claim("ExternalProvider", provider),
+                new Claim("ExternalId", externalKey),
                 new Claim("avatarUrl", avatarUrl)
             };
             var identity = new ClaimsIdentity(appClaims, CookieAuthenticationDefaults.AuthenticationScheme);
