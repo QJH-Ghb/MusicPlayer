@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.DataAnnotations;
+using Microsoft.Data.SqlClient;
 using MusicPlayer.Models;
 using MVC_DB_.Models;
 using System.ComponentModel.DataAnnotations;
@@ -12,22 +13,27 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace MusicPlayer.Controllers
 {
     public class HomeController : Controller
     {
+        //private readonly string _connStr = @"Server=(localdb)\MSSQLLocalDB;Database=MusicLibrary;Trusted_Connection=True;";
+        private readonly MusicContext _context;
 
         private readonly ILogger<HomeController> _logger;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, MusicContext context)
         {
             _logger = logger;
-        }
+            _context = context;
 
+        }
+        [Authorize]
         public IActionResult Index()
         {
-            return View();
+            return View("~/Views/Home/Index.cshtml");
         }
         [HttpGet]
         public IActionResult Login()
@@ -353,6 +359,39 @@ namespace MusicPlayer.Controllers
                 ViewBag.Message = "系統錯誤：" + ex.Message;
                 return View("~/Views/Home/Usercolumn.cshtml");
             }
+        }
+      
+        public IActionResult Search()
+        {
+            var musicFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "music");
+
+            var files = Directory.Exists(musicFolder)
+                        ? Directory.GetFiles(musicFolder, "*.mp3")
+                        : new string[0];
+
+            var songs = new Dictionary<string, string>();
+
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileName(file);       // 檔名
+                var relativePath = "/music/" + fileName;     // 前端可用的相對路徑
+                songs[fileName] = relativePath;
+            }
+
+            Console.WriteLine("讀到的歌曲數量: " + songs.Count);
+
+            ViewData["Songs"] = songs;
+            return View();
+        }
+        public IActionResult PlayList()
+        {
+            var songs = _context.SongList.ToList();
+
+            return View(songs);
+        }
+        public IActionResult Profile()
+        {
+            return View();
         }
         public IActionResult Privacy()
         {

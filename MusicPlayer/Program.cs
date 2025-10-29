@@ -4,11 +4,15 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Authentication.Google;
+using MusicPlayer.Models;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // MVC
 builder.Services.AddControllersWithViews();
+builder.Services.AddDbContext<MusicContext>(options =>   //AddDbContext：註冊資料庫服務，讓 Controller 可以用建構子注入（DI）
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));  //UseSqlServer()：指定使用 SQL Server（若是 MySQL、SQLite 就換成相應方法）
 
 // 偵錯用：確認是否讀到設定值
 var gid = builder.Configuration["Authentication:Google:ClientId"];
@@ -68,6 +72,6 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Login}/{id?}");
-
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+    
 app.Run();
