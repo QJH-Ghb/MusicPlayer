@@ -9,6 +9,5 @@ namespace MusicPlayer.Models
         public string title { get; set; }
         public string artist { get; set; }
         public string file_path { get; set; }
-        public DateTime download_date { get; set; }
     }
 }

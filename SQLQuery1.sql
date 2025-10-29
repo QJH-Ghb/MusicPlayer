@@ -1,6 +1,0 @@
-SELECT TOP (1000) [SongID]
-      ,[title]
-      ,[artist]
-      ,[file_path]
-      ,[download_date]
-  FROM [MusicLibrary].[dbo].[SongList]
