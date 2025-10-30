@@ -1,7 +1,6 @@
 OAuth 2.0架構使用到Google，請先到Google API Consolegp 申請憑證<br>
 https://console.developers.google.com/<br>
-再回到PC的CMD執行<br>
-### 設定 Google OAuth 憑證
+### 再回到PC的CMD設定 Google OAuth 憑證
 ```bash
 # 設定 Google 的 Client ID
 dotnet user-secrets set "Authentication:Google:ClientId" "你的ClientID"
