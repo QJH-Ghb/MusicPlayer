@@ -1,4 +1,4 @@
-採用 OAuth2.0 框架
+採用 OAuth2.0 框架<br>
 Server認證端為Google，請先到Google API Consolegp 申請憑證<br>
 https://console.developers.google.com/<br>
 ### 再回到PC的CMD設定 Google OAuth 憑證
