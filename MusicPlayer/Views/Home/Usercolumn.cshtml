@@ -1,0 +1,350 @@
+﻿@{
+    Layout = "";
+    // 從 cookie (claims) 取出 avatar 欄位
+    var avatarClaim = User.FindFirst("avatar")?.Value;
+    bool hasAvatar = avatarClaim == "true";
+    string? userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
+
+@model dynamic
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Usercolumn - Music Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400">
+    <link rel="stylesheet" href="~/css/bootstrap.min.css">
+    <link rel="stylesheet" href="~/css/fontawesome-all.min.css">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Open Sans', sans-serif;
+            background: radial-gradient(circle at top, #141E30, #243B55);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 10px rgba(0,0,0,0.4);
+            padding: 10px 0;
+        }
+
+        .nav-link {
+            color: #fff !important;
+            font-weight: bold;
+            margin: 0 1em;
+            transition: 0.3s;
+        }
+
+            .nav-link:hover {
+                color: #9bc9ff !important;
+                text-shadow: 0 0 10px rgba(155,201,255,0.7);
+            }
+
+        .playlist-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+        }
+
+            .playlist-container h2 {
+                text-align: center;
+                margin-bottom: 20px;
+                color: #a8c0ff;
+                text-shadow: 0 0 10px rgba(168,192,255,0.6);
+            }
+
+        .user-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin: 0 auto 15px;
+        }
+
+            .user-avatar img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+        .user-name {
+            text-align: center;
+            font-weight: bold;
+            color: #a8c0ff;
+            text-shadow: 0 0 5px rgba(168,192,255,0.5);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: #4b84fe;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+            button:hover {
+                transform: scale(1.05);
+                box-shadow: 0 0 15px rgba(168,192,255,0.5);
+            }
+
+        #songList div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+            #songList div:hover {
+                transform: scale(1.02);
+                box-shadow: 0 0 15px rgba(168,192,255,0.4);
+            }
+
+        select {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: none;
+            margin-right: 10px;
+        }
+
+        #uploadMsg, #addMsg {
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: #c0d4ff;
+        }
+    </style>
+</head>
+<body>
+    <!-- 導覽列 -->
+    <nav class="navbar navbar-expand-sm">
+        <div class="container d-flex justify-content-center">
+            <ul class="navbar-nav">
+                <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Home</a></li>
+                <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Search">Search</a></li>
+                <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="PlayList">PlayList</a></li>
+                <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Usercolumn">Usercolumn</a></li>
+                <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Login">Login</a></li>
+
+            </ul>
+        </div>
+    </nav>
+
+    <div class="playlist-container">
+        <div class="user-avatar">
+            <img id="avatarImg" src="@($"/image/{userId}.png")" asp-append-version="true" alt="avatar" />
+        </div>
+        <div class="user-name">
+            @User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+        </div>
+
+        <h2>上傳頭像</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" name="FormFile" id="fileInput" />
+            <button type="button" id="btnUpload">Upload</button>
+            <div id="uploadMsg"></div>
+        </form>
+
+        <h2>歌曲清單</h2>
+        <form id="addSongForm">
+            @Html.AntiForgeryToken()
+            <div class="form-group" style="display:flex; align-items:center;">
+                <select id="allSongsSelect">
+                    <option value="">載入中…</option>
+                </select>
+                <button type="button" id="btnAddSong">新增</button>
+            </div>
+            <span id="addMsg"></span>
+        </form>
+
+        <div id="songList">載入中...</div>
+    </div>
+
+    <script>
+        // 將 C# 的 userId 安全傳給 JS
+        const userId = @Html.Raw(Json.Serialize(userId));
+
+        document.getElementById("btnUpload").addEventListener("click", async () => {
+            const form = document.getElementById("uploadForm");
+            const msg = document.getElementById("uploadMsg");
+            const fd = new FormData(form);
+
+            msg.textContent = "Uploading...";
+
+            try {
+                const res = await fetch("/Home/UploadFile", {
+                    method: "POST",
+                    body: fd,
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    msg.textContent = "頭像上傳成功: " + result.fileName;
+
+                    const img = document.getElementById("avatarImg");
+                    if (userId && img) img.src = `/image/${userId}.png?ts=${Date.now()}`;
+                } else {
+                    msg.textContent = "頭像上傳失敗: " + (result.message || "");
+                }
+            } catch (err) {
+                msg.textContent = "Error: " + err.message;
+            }
+        });
+
+        // ====== 載入使用者歌曲清單 ======
+        async function loadSongs(userId) {
+            if (!userId) {
+                document.getElementById("songList").textContent = "未登入或無使用者 ID";
+                return;
+            }
+
+            try {
+                const res = await fetch(`/Home/GetSongs?userId=${encodeURIComponent(userId)}`);
+                const data = await res.json();
+
+                const container = document.getElementById("songList");
+                container.innerHTML = "";
+
+                if (!data.success) {
+                    container.textContent = data.message || "無播放清單";
+                    return;
+                }
+
+                data.songs.forEach(song => {
+                    const div = document.createElement("div");
+                    div.style.display = "flex";
+                    div.style.alignItems = "center";
+                    div.style.justifyContent = "space-between";
+
+                    const info = document.createElement("span");
+                    info.innerHTML = `🎵 <b>${song.title}</b> — ${song.artist}`;
+                    div.appendChild(info);
+
+                    const btn = document.createElement("button");
+                    btn.textContent = "移除";
+                    btn.style.marginLeft = "10px";
+                    btn.style.padding = "3px 8px";
+                    btn.style.border = "none";
+                    btn.style.background = "#4b84fe";
+                    btn.style.color = "#fff";
+                    btn.style.cursor = "pointer";
+                    btn.onclick = () => removeSong(song.songID, userId, div);
+
+                    div.appendChild(btn);
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                document.getElementById("songList").textContent = "載入失敗：" + e.message;
+            }
+        }
+
+        // ====== 移除歌曲 ======
+        async function removeSong(songId, userId, element) {
+            if (!confirm("確定要移除此歌曲嗎？")) return;
+
+            try {
+                const res = await fetch(`/Home/RemoveFromPlaylist?songId=${songId}&userId=${userId}`, {
+                    method: "POST",
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    element.remove();
+                } else {
+                    alert(data.message || "移除失敗");
+                }
+            } catch (e) {
+                alert("移除失敗：" + e.message);
+            }
+        }
+
+        // ====== 載入所有歌曲到下拉選單 ======
+        async function loadAllSongs() {
+            const sel = document.getElementById('allSongsSelect');
+            try {
+                const res = await fetch('/Home/GetAllSongs');
+                const data = await res.json();
+
+                sel.innerHTML = '';
+                if (!data.success || !data.songs || data.songs.length === 0) {
+                    sel.innerHTML = '<option value="">無可選歌曲</option>';
+                    return;
+                }
+
+                data.songs.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.songID;
+                    opt.textContent = `${s.title} — ${s.artist}`;
+                    sel.appendChild(opt);
+                });
+            } catch {
+                sel.innerHTML = '<option value="">載入失敗</option>';
+            }
+        }
+
+        // ====== 新增選中歌曲 ======
+        document.getElementById('btnAddSong').addEventListener('click', async () => {
+            const sel = document.getElementById('allSongsSelect');
+            const songId = sel.value;
+            const msg = document.getElementById('addMsg');
+            const token = document.querySelector('#addSongForm input[name="__RequestVerificationToken"]')?.value || '';
+
+            if (!songId) { msg.textContent = '請先選擇歌曲'; return; }
+            if (!userId) { msg.textContent = '未登入或無使用者 ID'; return; }
+
+            msg.textContent = '新增中…';
+
+            try {
+                const body = new URLSearchParams({ songId, userId });
+                const res = await fetch('/Home/AddToPlaylist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'RequestVerificationToken': token
+                    },
+                    body: body.toString()
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    msg.textContent = data.message || '已加入';
+                    loadSongs(userId);
+                } else {
+                    msg.textContent = data.message || '新增失敗';
+                }
+            } catch (e) {
+                msg.textContent = '新增失敗：' + e.message;
+            }
+        });
+
+        // ====== 初始化 ======
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSongs(userId);
+            loadAllSongs();
+        });
+    </script>
+
+</body>
+</html>

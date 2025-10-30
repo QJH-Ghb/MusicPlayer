@@ -7,7 +7,7 @@ namespace MVC_DB_.Models
 {
     public class account
     {
-        public int ID { get; set; }
+        public int userID { get; set; }
         public string userName { get; set; }
         public string passWord { get; set; }
         public string email { get; set; }
