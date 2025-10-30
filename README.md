@@ -1,4 +1,5 @@
-OAuth 2.0架構使用到Google，請先到Google API Consolegp 申請憑證<br>
+採用 OAuth2.0 框架
+Server認證端為Google，請先到Google API Consolegp 申請憑證<br>
 https://console.developers.google.com/<br>
 ### 再回到PC的CMD設定 Google OAuth 憑證
 ```bash
