@@ -1,18 +1,30 @@
-採用 OAuth2.0 框架<br>
-Server認證端為Google，請先到Google API Consolegp 申請憑證<br>
+1.取得憑證<br>
+OAuth 2.0架構使用到Google，請先到Google API Consolegp 申請憑證<br>
 https://console.developers.google.com/<br>
-### 再回到PC的CMD設定 Google OAuth 憑證
-```bash
-# 設定 Google 的 Client ID
-dotnet user-secrets set "Authentication:Google:ClientId" "你的ClientID"
+2.建立資料<br>
+使用SSMS21執行 資料庫.sql 建立資料<br>
+至MusicPlayer資料夾底下更改appsettings.json資料庫帳號設定<br>
 ```
-```bash
-# 設定 Google 的 Client Secret
+"DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=MusicPlayer;User Id=(ID);Password=(Password);Trusted_Connection=False;MultipleActiveResultSets=true;Encrypt=False;"
+```
+以及model底下，DBmanager.cs檔案中的資料庫設定<br>
+```
+private readonly string connStr = "Data Source=(localdb)\\MSSQLLocalDB;Database=MusicPlayer;User ID=QJhdatabase;Password=123456789;Trusted_Connection=True"
+```
+3.設定憑證<br>
+至MusicPlayer資料夾底下更改appsettings.json
+```
+"ClientId": "YOUR_GOOGLE_CLIENT_ID",
+"ClientSecret": "YOUR_GOOGLE_CLIENT_SECRET"
+```
+或者
+到PC的CMD執行<br>
+```
+dotnet user-secrets set "Authentication:Google:ClientId" "你的ClientID"
 dotnet user-secrets set "Authentication:Google:ClientSecret" "你的ClientSecret"
 ```
-⚠ 資料庫為SQL Server Management Studio 21，版本：21.5.14 ⚠<br>
-⚠ Visual Studio Community2022，版本：17.14.13 ⚠<br>
-專案分工：<br>
+=======
+專案負責部分：<br>
 QJH<br>
 Database、登入介面、用戶專區<br>
 jasper<br>
