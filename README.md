@@ -23,6 +23,7 @@ private readonly string connStr = "Data Source=(localdb)\\MSSQLLocalDB;Database=
 dotnet user-secrets set "Authentication:Google:ClientId" "你的ClientID"
 dotnet user-secrets set "Authentication:Google:ClientSecret" "你的ClientSecret"
 ```
+=======
 專案負責部分：<br>
 QJH<br>
 Database、登入介面、用戶專區<br>
